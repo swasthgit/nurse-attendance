@@ -26,6 +26,8 @@
 
 # Firebase
 *-firebase-adminsdk-*.json
+firebase.ts
+
 firebase-debug.log
 .firebase/
 
