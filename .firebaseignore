@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+
+# Source files (not needed for hosting)
+*.ts
+*.tsx
+!*.d.ts
+
+# Development
+.git/
+.github/
+.vscode/
+.idea/
+
+# Build artifacts
+.next/
+out/
+
+# Environment and secrets
+.env
+.env.*
+*-firebase-adminsdk-*.json
+
+# Scripts (development only)
+scripts/
+
+# Data files
+*.csv
+
+# Config files
+tsconfig.json
+next.config.ts
+postcss.config.mjs
+eslint.config.mjs
+components.json
+
+# Documentation
+README.md
+*.md
+
+# Testing
+coverage/
+__tests__/
+*.test.*
+*.spec.*
+
