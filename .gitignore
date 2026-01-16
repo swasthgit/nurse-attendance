@@ -53,3 +53,9 @@ yarn-error.log*
 
 # Data files (keep locally, don't push)
 *.csv
+
+# Scripts (contains sensitive operations)
+scripts/
+
+# Claude Code
+.claude/

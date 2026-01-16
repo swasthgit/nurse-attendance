@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { doc, getDoc, setDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,13 +17,6 @@ import {
 } from "@/components/ui/card";
 import { Stethoscope, Building2, Lock, Eye, EyeOff, MapPin } from "lucide-react";
 
-type LocationResult = {
-  latitude: number | null;
-  longitude: number | null;
-  source: "browser" | "ip" | "unavailable";
-  message?: string;
-};
-
 export default function NurseLoginPage() {
   const router = useRouter();
   const [clinicId, setClinicId] = useState("");
@@ -31,63 +24,6 @@ export default function NurseLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-
-  const fetchIpLocation = async (): Promise<LocationResult | null> => {
-    try {
-      const response = await fetch("https://ipapi.co/json/");
-      if (!response.ok) throw new Error("Unable to fetch IP location");
-      const data = await response.json();
-      if (typeof data.latitude === "number" && typeof data.longitude === "number") {
-        return {
-          latitude: data.latitude,
-          longitude: data.longitude,
-          source: "ip",
-          message: "Approximate location detected via IP",
-        };
-      }
-    } catch (err) {
-      console.error("IP location error:", err);
-    }
-    return null;
-  };
-
-  const getLocation = async (): Promise<LocationResult> => {
-    if (typeof navigator === "undefined") {
-      return { latitude: null, longitude: null, source: "unavailable", message: "Navigator unavailable" };
-    }
-
-    if (navigator.geolocation) {
-      const browserLocation = await new Promise<LocationResult>((resolve) => {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            resolve({
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude,
-              source: "browser",
-            });
-          },
-          (error) => {
-            resolve({
-              latitude: null,
-              longitude: null,
-              source: "unavailable",
-              message: error.message || "Browser location denied",
-            });
-          },
-          { enableHighAccuracy: true, timeout: 10000 }
-        );
-      });
-
-      if (browserLocation.latitude !== null && browserLocation.longitude !== null) {
-        return browserLocation;
-      }
-    }
-
-    const ipLocation = await fetchIpLocation();
-    if (ipLocation) return ipLocation;
-
-    return { latitude: null, longitude: null, source: "unavailable", message: "Location not available" };
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,29 +39,7 @@ export default function NurseLoginPage() {
       if (!nurseDoc.exists()) throw new Error("Nurse data not found");
 
       const nurseData = nurseDoc.data();
-      const location = await getLocation();
       const now = new Date();
-      const expiresAt = new Date(now.getTime() + 2 * 60 * 60 * 1000);
-
-      const clinicDocRef = doc(db, "attendance", clinicId.toUpperCase());
-      await setDoc(clinicDocRef, {
-        clinicId: clinicId.toUpperCase(),
-        odId: user.uid,
-        nurseName: nurseData.nurseName,
-        lastLoginTime: serverTimestamp(),
-        lastLoginTimeLocal: now.toISOString(),
-      }, { merge: true });
-
-      await addDoc(collection(clinicDocRef, "logins"), {
-        loginTime: serverTimestamp(),
-        loginTimeLocal: now.toISOString(),
-        latitude: location.latitude,
-        longitude: location.longitude,
-        locationSource: location.source,
-        locationMessage: location.message || null,
-        sessionExpiresAt: expiresAt.toISOString(),
-        userAgent: navigator.userAgent,
-      });
 
       const session = {
         odId: user.uid,
@@ -140,8 +54,6 @@ export default function NurseLoginPage() {
         nurseType: nurseData.nurseType || "",
         nurseEmpId: nurseData.nurseEmpId || "",
         loginTime: now.toLocaleString(),
-        location,
-        sessionExpiresAt: expiresAt.toISOString(),
       };
 
       localStorage.setItem("nurseSession", JSON.stringify(session));
@@ -252,7 +164,7 @@ export default function NurseLoginPage() {
             <div className="flex items-start gap-3 p-3 bg-neutral-800/30 rounded-lg border border-neutral-700/30">
               <MapPin className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
               <p className="text-xs text-neutral-400 leading-relaxed">
-                Upon login, we'll request your location to verify your shift attendance.
+                Your location will be recorded when you punch in/out for camp attendance.
               </p>
             </div>
 
@@ -272,7 +184,7 @@ export default function NurseLoginPage() {
             </Button>
 
             <p className="text-center text-xs text-neutral-500 pt-2">
-              Sessions expire after 2 hours for security purposes
+              Mark your camp attendance after login
             </p>
           </form>
         </CardContent>
